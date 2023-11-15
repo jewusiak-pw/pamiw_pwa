@@ -1,0 +1,118 @@
+﻿@page "/"
+@using pamiw_pwa.ApiUtils
+@inject IApiClient ApiClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>TODO app</PageTitle>
+
+<h1>TODO app</h1>
+
+
+@if (lists == null)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <div>
+        <input type="text" @bind="newListName"/>
+        <button class="btn btn-primary" @onclick="@(() => AddList())">Add list</button>
+    </div>
+    <br/>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Actions</th>
+            <th>Items</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var list in lists)
+        {
+            <tr>
+                <td>@list.name</td>
+                <td>
+                    <button class="btn btn-danger" @onclick="@(() => DeleteList(list.uuid))">Delete list</button>
+                    <input type="text" @bind="newItemMap[list.uuid]"/>
+                    <button class="btn btn-primary" @onclick="@(() => AddItem(list.uuid))">Add item</button>
+                </td>
+                <td>
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in list.items)
+                        {
+                            <tr>
+                                <td>@item.name</td>
+                                <td>@(item.status ? "DONE" : "TO-DO")</td>
+                                <td>
+                                    <button class="btn btn-danger" @onclick="@(() => DeleteItem(item.uuid))">Delete</button>
+                                    <button class="btn btn-primary" @onclick="@(() => ChangeItemStatus(item.uuid, !item.status))">Toggle done</button>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TodoList>? lists;
+    private Dictionary<string, string> newItemMap = new();
+    private string newListName = String.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLists();
+    }
+
+    private async Task LoadLists()
+    {
+        lists = await ApiClient.GetLists();
+        newItemMap = new();
+        lists.ForEach(list => newItemMap.Add(list.uuid, String.Empty));
+    }
+
+    private async Task AddItem(string listid)
+    {
+        await ApiClient.CreateItem(listid, newItemMap[listid]);
+        await LoadLists();
+    }
+
+    private async Task DeleteList(string id)
+    {
+        await ApiClient.DeleteList(id);
+        await LoadLists();
+    }
+
+    private async Task DeleteItem(string id)
+    {
+        await ApiClient.DeleteItem(id);
+        await LoadLists();
+    }
+
+    private async Task ChangeItemStatus(string id, bool status)
+    {
+        await ApiClient.ChangeItemStatus(id, status);
+        await LoadLists();
+    }
+
+    private async Task AddList()
+    {
+        await ApiClient.CreateList(newListName);
+        await LoadLists();
+    }
+}
